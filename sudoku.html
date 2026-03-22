@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sudoku</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #1a1a2e;
+      font-family: 'Segoe UI', sans-serif;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      letter-spacing: 4px;
+      color: #a29bfe;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Setup screen ── */
+    #setup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 16px;
+      padding: 2.5rem 3rem;
+    }
+
+    #setup h2 { color: #a29bfe; letter-spacing: 2px; font-size: 1.1rem; }
+
+    .option-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .option-group label {
+      font-size: 0.85rem;
+      color: #666;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .option-row {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .opt-btn {
+      padding: 0.5rem 1.2rem;
+      border: 2px solid #0f3460;
+      border-radius: 8px;
+      background: transparent;
+      color: #aaa;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 1px;
+    }
+
+    .opt-btn:hover { border-color: #a29bfe; color: #a29bfe; }
+    .opt-btn.active { border-color: #a29bfe; background: #a29bfe; color: #1a1a2e; font-weight: bold; }
+
+    #start-btn {
+      padding: 0.7rem 2.5rem;
+      background: #a29bfe;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #start-btn:hover { background: #8b83f0; }
+
+    /* ── Game screen ── */
+    #game { display: none; flex-direction: column; align-items: center; gap: 1rem; }
+
+    #top-bar {
+      display: flex;
+      gap: 2.5rem;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+
+    #top-bar span {
+      display: block;
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #a29bfe;
+      text-align: center;
+    }
+
+    #timer-val { color: #4ecca3!important; }
+
+    #board-wrap {
+      position: relative;
+    }
+
+    #board {
+      border-collapse: collapse;
+      border: 3px solid #a29bfe;
+      border-radius: 4px;
+    }
+
+    #board td {
+      width: 52px;
+      height: 52px;
+      text-align: center;
+      vertical-align: middle;
+      border: 1px solid #0f3460;
+      background: #16213e;
+      cursor: pointer;
+      font-size: 1.4rem;
+      color: #eee;
+      user-select: none;
+      transition: background 0.1s;
+      position: relative;
+    }
+
+    #board td.given {
+      color: #a29bfe;
+      font-weight: bold;
+      cursor: default;
+    }
+
+    #board td.selected { background: #1e3a5f !important; }
+    #board td.highlight { background: #1a2a45; }
+    #board td.error { color: #e94560 !important; }
+    #board td.correct { color: #4ecca3 !important; }
+    #board td.box-right  { border-right:  3px solid #a29bfe; }
+    #board td.box-bottom { border-bottom: 3px solid #a29bfe; }
+
+    /* small sizes */
+    #board.size-4 td { width: 64px; height: 64px; font-size: 1.6rem; }
+    #board.size-6 td { width: 58px; height: 58px; font-size: 1.5rem; }
+    #board.size-9 td { width: 52px; height: 52px; font-size: 1.4rem; }
+
+    #numpad {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.3rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .num-btn {
+      width: 48px;
+      height: 48px;
+      border: 2px solid #0f3460;
+      border-radius: 8px;
+      background: #16213e;
+      color: #eee;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .num-btn:hover { border-color: #a29bfe; color: #a29bfe; }
+
+    .num-btn.erase {
+      width: auto;
+      padding: 0 1rem;
+      font-size: 0.85rem;
+      color: #666;
+      letter-spacing: 1px;
+    }
+
+    #actions {
+      display: flex;
+      gap: 0.8rem;
+    }
+
+    .action-btn {
+      padding: 0.5rem 1.2rem;
+      border: 2px solid #0f3460;
+      border-radius: 8px;
+      background: transparent;
+      color: #aaa;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .action-btn:hover { border-color: #a29bfe; color: #a29bfe; }
+    #check-btn:hover  { border-color: #4ecca3; color: #4ecca3; }
+    #solve-btn:hover  { border-color: #f7b731; color: #f7b731; }
+
+    #msg {
+      font-size: 1rem;
+      min-height: 1.3rem;
+      letter-spacing: 1px;
+    }
+
+    #home-btn {
+      margin-top: 0.5rem;
+      display: inline-block;
+      padding: 0.5rem 1.5rem;
+      border: 2px solid #0f3460;
+      border-radius: 6px;
+      background: transparent;
+      color: #666;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    #home-btn:hover { border-color: #a29bfe; color: #a29bfe; }
+
+    /* win overlay */
+    #win-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26,26,46,0.92);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1rem;
+      z-index: 100;
+    }
+
+    #win-overlay h2 { font-size: 2.5rem; color: #a29bfe; letter-spacing: 3px; }
+    #win-overlay p  { color: #aaa; font-size: 1.1rem; }
+
+    #win-overlay button {
+      padding: 0.6rem 2rem;
+      background: #a29bfe;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>SUDOKU</h1>
+
+  <!-- Setup -->
+  <div id="setup">
+    <h2>NEW GAME</h2>
+
+    <div class="option-group">
+      <label>Grid Size</label>
+      <div class="option-row">
+        <button class="opt-btn" data-group="size" data-val="4">4 × 4</button>
+        <button class="opt-btn active" data-group="size" data-val="9">9 × 9</button>
+        <button class="opt-btn" data-group="size" data-val="6">6 × 6</button>
+      </div>
+    </div>
+
+    <div class="option-group">
+      <label>Difficulty</label>
+      <div class="option-row">
+        <button class="opt-btn active" data-group="diff" data-val="easy">Easy</button>
+        <button class="opt-btn" data-group="diff" data-val="medium">Medium</button>
+        <button class="opt-btn" data-group="diff" data-val="hard">Hard</button>
+      </div>
+    </div>
+
+    <button id="start-btn">START GAME</button>
+    <a id="home-btn-setup" href="index.html" style="margin-top:0.5rem;display:inline-block;padding:0.5rem 1.5rem;border:2px solid #0f3460;border-radius:6px;background:transparent;color:#666;font-size:0.85rem;letter-spacing:1px;text-decoration:none;transition:border-color 0.2s,color 0.2s;" onmouseover="this.style.borderColor='#a29bfe';this.style.color='#a29bfe'" onmouseout="this.style.borderColor='#0f3460';this.style.color='#666'">&#8592; Back to Home</a>
+  </div>
+
+  <!-- Game -->
+  <div id="game">
+
+    <div id="top-bar">
+      <div>Size <span id="size-val">9×9</span></div>
+      <div>Difficulty <span id="diff-val">Easy</span></div>
+      <div>Time <span id="timer-val">0:00</span></div>
+      <div>Errors <span id="errors-val">0</span></div>
+    </div>
+
+    <div id="board-wrap">
+      <table id="board"></table>
+    </div>
+
+    <div id="numpad"></div>
+
+    <div id="msg"></div>
+
+    <div id="actions">
+      <button class="action-btn" id="check-btn">Check</button>
+      <button class="action-btn" id="new-btn">New Game</button>
+      <button class="action-btn" id="solve-btn">Solve</button>
+    </div>
+
+    <a id="home-btn" href="index.html">&#8592; Back to Home</a>
+  </div>
+
+  <div id="win-overlay">
+    <h2>SOLVED!</h2>
+    <p id="win-msg"></p>
+    <button id="win-new-btn">Play Again</button>
+  </div>
+
+  <script>
+    // ── Config ──────────────────────────────────────────────────────
+    const CLUE_COUNTS = {
+      4:  { easy: 12, medium: 10, hard: 8  },
+      6:  { easy: 24, medium: 18, hard: 14 },
+      9:  { easy: 45, medium: 35, hard: 27 }
+    };
+
+    // Box dimensions per grid size
+    const BOX = {
+      4: [2, 2],
+      6: [2, 3],
+      9: [3, 3]
+    };
+
+    // ── State ───────────────────────────────────────────────────────
+    let SIZE, BOX_R, BOX_C;
+    let solution, puzzle, userGrid;
+    let selectedCell = null;
+    let errors = 0, timerSec = 0, timerInterval;
+    let chosenSize = 9, chosenDiff = 'easy';
+
+    // ── Option buttons ──────────────────────────────────────────────
+    document.querySelectorAll('.opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const group = btn.dataset.group;
+        document.querySelectorAll(`.opt-btn[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (group === 'size') chosenSize = +btn.dataset.val;
+        else chosenDiff = btn.dataset.val;
+      });
+    });
+
+    document.getElementById('start-btn').addEventListener('click', () => startGame(chosenSize, chosenDiff));
+    document.getElementById('new-btn').addEventListener('click', () => showSetup());
+    document.getElementById('win-new-btn').addEventListener('click', () => { document.getElementById('win-overlay').style.display = 'none'; showSetup(); });
+    document.getElementById('check-btn').addEventListener('click', checkBoard);
+    document.getElementById('solve-btn').addEventListener('click', solveBoard);
+
+    function showSetup() {
+      clearInterval(timerInterval);
+      document.getElementById('setup').style.display = 'flex';
+      document.getElementById('game').style.display = 'none';
+    }
+
+    // ── Sudoku Generator ────────────────────────────────────────────
+    function generateSudoku(size, diff) {
+      SIZE = size;
+      [BOX_R, BOX_C] = BOX[size];
+
+      const grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+      fillGrid(grid);
+      const sol = grid.map(r => [...r]);
+
+      const clues = CLUE_COUNTS[SIZE][diff];
+      const total = SIZE * SIZE;
+      const toRemove = total - clues;
+
+      const cells = shuffle([...Array(total).keys()]);
+      let removed = 0;
+      for (const idx of cells) {
+        if (removed >= toRemove) break;
+        const r = Math.floor(idx / SIZE), c = idx % SIZE;
+        const backup = grid[r][c];
+        grid[r][c] = 0;
+        if (countSolutions(grid.map(row => [...row])) === 1) {
+          removed++;
+        } else {
+          grid[r][c] = backup;
+        }
+      }
+
+      return { solution: sol, puzzle: grid };
+    }
+
+    function fillGrid(grid) {
+      const empty = findEmpty(grid);
+      if (!empty) return true;
+      const [r, c] = empty;
+      for (const num of shuffle(range(1, SIZE + 1))) {
+        if (isValid(grid, r, c, num)) {
+          grid[r][c] = num;
+          if (fillGrid(grid)) return true;
+          grid[r][c] = 0;
+        }
+      }
+      return false;
+    }
+
+    function countSolutions(grid, limit = 2) {
+      const empty = findEmpty(grid);
+      if (!empty) return 1;
+      const [r, c] = empty;
+      let count = 0;
+      for (const num of range(1, SIZE + 1)) {
+        if (isValid(grid, r, c, num)) {
+          grid[r][c] = num;
+          count += countSolutions(grid, limit);
+          grid[r][c] = 0;
+          if (count >= limit) return count;
+        }
+      }
+      return count;
+    }
+
+    function findEmpty(grid) {
+      for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+          if (grid[r][c] === 0) return [r, c];
+      return null;
+    }
+
+    function isValid(grid, row, col, num) {
+      // Row
+      if (grid[row].includes(num)) return false;
+      // Col
+      for (let r = 0; r < SIZE; r++) if (grid[r][col] === num) return false;
+      // Box
+      const br = Math.floor(row / BOX_R) * BOX_R;
+      const bc = Math.floor(col / BOX_C) * BOX_C;
+      for (let r = br; r < br + BOX_R; r++)
+        for (let c = bc; c < bc + BOX_C; c++)
+          if (grid[r][c] === num) return false;
+      return true;
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────
+    function range(a, b) { return Array.from({ length: b - a }, (_, i) => i + a); }
+    function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+
+    // ── Render Board ────────────────────────────────────────────────
+    function buildBoard() {
+      const table = document.getElementById('board');
+      table.innerHTML = '';
+      table.className = `size-${SIZE}`;
+
+      for (let r = 0; r < SIZE; r++) {
+        const tr = document.createElement('tr');
+        for (let c = 0; c < SIZE; c++) {
+          const td = document.createElement('td');
+          td.dataset.r = r;
+          td.dataset.c = c;
+
+          if ((c + 1) % BOX_C === 0 && c + 1 < SIZE) td.classList.add('box-right');
+          if ((r + 1) % BOX_R === 0 && r + 1 < SIZE) td.classList.add('box-bottom');
+
+          if (puzzle[r][c] !== 0) {
+            td.textContent = puzzle[r][c];
+            td.classList.add('given');
+          }
+
+          td.addEventListener('click', () => selectCell(r, c));
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+    }
+
+    function buildNumpad() {
+      const pad = document.getElementById('numpad');
+      pad.innerHTML = '';
+      for (let n = 1; n <= SIZE; n++) {
+        const btn = document.createElement('button');
+        btn.className = 'num-btn';
+        btn.textContent = n;
+        btn.addEventListener('click', () => enterNumber(n));
+        pad.appendChild(btn);
+      }
+      const erase = document.createElement('button');
+      erase.className = 'num-btn erase';
+      erase.textContent = 'ERASE';
+      erase.addEventListener('click', () => enterNumber(0));
+      pad.appendChild(erase);
+    }
+
+    function getCell(r, c) {
+      return document.querySelector(`#board td[data-r="${r}"][data-c="${c}"]`);
+    }
+
+    function selectCell(r, c) {
+      // Clear highlights
+      document.querySelectorAll('#board td').forEach(td => {
+        td.classList.remove('selected', 'highlight');
+      });
+
+      selectedCell = [r, c];
+      const td = getCell(r, c);
+      td.classList.add('selected');
+
+      // Highlight same row, col, box
+      for (let i = 0; i < SIZE; i++) {
+        getCell(r, i).classList.add('highlight');
+        getCell(i, c).classList.add('highlight');
+      }
+      const br = Math.floor(r / BOX_R) * BOX_R;
+      const bc = Math.floor(c / BOX_C) * BOX_C;
+      for (let dr = 0; dr < BOX_R; dr++)
+        for (let dc = 0; dc < BOX_C; dc++)
+          getCell(br + dr, bc + dc).classList.add('highlight');
+
+      td.classList.add('selected');
+    }
+
+    function enterNumber(num) {
+      if (!selectedCell) return;
+      const [r, c] = selectedCell;
+      if (puzzle[r][c] !== 0) return; // given cell
+      userGrid[r][c] = num;
+      const td = getCell(r, c);
+      td.textContent = num === 0 ? '' : num;
+      td.classList.remove('error', 'correct');
+      setMsg('');
+
+      if (num !== 0) {
+        if (num !== solution[r][c]) {
+          td.classList.add('error');
+          errors++;
+          document.getElementById('errors-val').textContent = errors;
+        } else {
+          td.classList.add('correct');
+        }
+      }
+
+      if (isBoardComplete()) winGame();
+    }
+
+    // ── Keyboard ────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (document.getElementById('game').style.display === 'none') return;
+
+      const num = parseInt(e.key);
+      if (!isNaN(num) && num >= 1 && num <= SIZE) { enterNumber(num); return; }
+      if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') { enterNumber(0); return; }
+
+      if (!selectedCell) return;
+      let [r, c] = selectedCell;
+      if (e.key === 'ArrowUp')    r = Math.max(0, r - 1);
+      if (e.key === 'ArrowDown')  r = Math.min(SIZE - 1, r + 1);
+      if (e.key === 'ArrowLeft')  c = Math.max(0, c - 1);
+      if (e.key === 'ArrowRight') c = Math.min(SIZE - 1, c + 1);
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        selectCell(r, c);
+      }
+    });
+
+    // ── Game control ────────────────────────────────────────────────
+    function startGame(size, diff) {
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+      document.getElementById('size-val').textContent = `${size}×${size}`;
+      document.getElementById('diff-val').textContent = diff.charAt(0).toUpperCase() + diff.slice(1);
+
+      errors = 0;
+      document.getElementById('errors-val').textContent = 0;
+      setMsg('');
+      selectedCell = null;
+
+      const gen = generateSudoku(size, diff);
+      solution = gen.solution;
+      puzzle   = gen.puzzle;
+      userGrid = puzzle.map(r => [...r]);
+
+      buildBoard();
+      buildNumpad();
+      startTimer();
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerSec = 0;
+      updateTimer();
+      timerInterval = setInterval(() => { timerSec++; updateTimer(); }, 1000);
+    }
+
+    function updateTimer() {
+      const m = Math.floor(timerSec / 60);
+      const s = timerSec % 60;
+      document.getElementById('timer-val').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function isBoardComplete() {
+      for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+          if (userGrid[r][c] !== solution[r][c]) return false;
+      return true;
+    }
+
+    function checkBoard() {
+      let ok = true;
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (puzzle[r][c] !== 0) continue;
+          const td = getCell(r, c);
+          td.classList.remove('error', 'correct');
+          if (userGrid[r][c] === 0) { ok = false; continue; }
+          if (userGrid[r][c] !== solution[r][c]) { td.classList.add('error'); ok = false; }
+          else td.classList.add('correct');
+        }
+      }
+      setMsg(ok ? '' : 'Some cells have errors.');
+    }
+
+    function solveBoard() {
+      clearInterval(timerInterval);
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          userGrid[r][c] = solution[r][c];
+          const td = getCell(r, c);
+          td.classList.remove('error');
+          if (puzzle[r][c] === 0) {
+            td.textContent = solution[r][c];
+            td.classList.add('correct');
+          }
+        }
+      }
+      setMsg('Board solved.');
+    }
+
+    function saveSudokuScore() {
+      const user = localStorage.getItem('arcade_username');
+      if (!user) return;
+      const all = JSON.parse(localStorage.getItem('arcade_scores') || '{}');
+      if (!all[user]) all[user] = {};
+      const s = all[user].sudoku || { completed: 0, gamesPlayed: 0, bestTime: null };
+      s.gamesPlayed++;
+      s.completed++;
+      if (s.bestTime === null || timerSec < s.bestTime) s.bestTime = timerSec;
+      all[user].sudoku = s;
+      localStorage.setItem('arcade_scores', JSON.stringify(all));
+    }
+
+    function winGame() {
+      clearInterval(timerInterval);
+      saveSudokuScore();
+      const m = Math.floor(timerSec / 60);
+      const s = timerSec % 60;
+      document.getElementById('win-msg').textContent =
+        `Time: ${m}:${s.toString().padStart(2,'0')}  ·  Errors: ${errors}`;
+      document.getElementById('win-overlay').style.display = 'flex';
+    }
+
+    function setMsg(text) {
+      document.getElementById('msg').textContent = text;
+    }
+
+    showSetup();
+  </script>
+
+</body>
+</html>

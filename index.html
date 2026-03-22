@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Arcade</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #1a1a2e;
+      font-family: 'Segoe UI', sans-serif;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      gap: 2rem;
+    }
+
+    header { text-align: center; }
+
+    header h1 {
+      font-size: 3rem;
+      letter-spacing: 6px;
+      background: linear-gradient(135deg, #4ecca3, #e94560);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.4rem;
+    }
+
+    header p { color: #666; font-size: 1rem; letter-spacing: 2px; }
+
+    /* ── Username bar ── */
+    #user-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 12px;
+      padding: 0.8rem 1.4rem;
+    }
+
+    #user-bar label { color: #666; font-size: 0.85rem; letter-spacing: 1px; white-space: nowrap; }
+
+    #username-input {
+      background: #1a1a2e;
+      border: 2px solid #0f3460;
+      border-radius: 8px;
+      color: #eee;
+      font-size: 1rem;
+      padding: 0.4rem 0.8rem;
+      width: 180px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #username-input:focus { border-color: #a29bfe; }
+
+    #save-user-btn {
+      padding: 0.4rem 1rem;
+      background: #a29bfe;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s;
+    }
+
+    #save-user-btn:hover { background: #8b83f0; }
+
+    #welcome-msg { color: #4ecca3; font-size: 0.9rem; letter-spacing: 1px; }
+
+    /* ── Game cards ── */
+    .games {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .card {
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 16px;
+      width: 220px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      border-color: var(--accent);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+
+    .card .icon { font-size: 3.5rem; line-height: 1; }
+
+    .card h2 { font-size: 1.2rem; letter-spacing: 2px; color: var(--accent); }
+
+    .card p { font-size: 0.82rem; color: #666; line-height: 1.5; }
+
+    .card-stat {
+      font-size: 0.78rem;
+      color: #444;
+      letter-spacing: 0.5px;
+      min-height: 1rem;
+      transition: color 0.3s;
+    }
+
+    .card-stat.has-data { color: var(--accent); opacity: 0.8; }
+
+    .play-btn {
+      margin-top: 0.3rem;
+      padding: 0.5rem 1.5rem;
+      border-radius: 6px;
+      border: 2px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      font-size: 0.9rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      transition: background 0.2s, color 0.2s;
+      pointer-events: none;
+    }
+
+    .card:hover .play-btn { background: var(--accent); color: #1a1a2e; }
+
+    .card.snake     { --accent: #4ecca3; }
+    .card.ttt       { --accent: #e94560; }
+    .card.breakout  { --accent: #f7b731; }
+    .card.sudoku    { --accent: #a29bfe; }
+
+    /* ── Stats table ── */
+    #stats-section {
+      width: 100%;
+      max-width: 700px;
+    }
+
+    #stats-section h2 {
+      font-size: 1rem;
+      letter-spacing: 2px;
+      color: #444;
+      margin-bottom: 0.8rem;
+      text-align: center;
+    }
+
+    #stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    #stats-table th {
+      color: #555;
+      font-weight: normal;
+      letter-spacing: 1px;
+      padding: 0.4rem 0.8rem;
+      border-bottom: 1px solid #0f3460;
+      text-align: left;
+    }
+
+    #stats-table td {
+      padding: 0.6rem 0.8rem;
+      border-bottom: 1px solid #0f3460;
+      color: #aaa;
+    }
+
+    #stats-table td:first-child { color: #eee; font-weight: bold; }
+
+    #stats-table .highlight { color: #4ecca3; }
+
+    footer { color: #333; font-size: 0.8rem; letter-spacing: 1px; margin-top: auto; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>ARCADE</h1>
+    <p>PICK A GAME AND PLAY</p>
+  </header>
+
+  <!-- Username bar -->
+  <div id="user-bar">
+    <label>PLAYER</label>
+    <input id="username-input" type="text" placeholder="Enter your name…" maxlength="20" />
+    <button id="save-user-btn">Save</button>
+    <span id="welcome-msg"></span>
+  </div>
+
+  <!-- Game cards -->
+  <div class="games">
+
+    <a class="card snake" href="snake.html">
+      <div class="icon">🐍</div>
+      <h2>SNAKE</h2>
+      <p>Eat food, grow longer, and don't hit the walls or yourself.</p>
+      <div class="card-stat" id="stat-snake"></div>
+      <div class="play-btn">PLAY</div>
+    </a>
+
+    <a class="card ttt" href="tic-tac-toe.html">
+      <div class="icon">⭕</div>
+      <h2>TIC TAC TOE</h2>
+      <p>Two players take turns. Get three in a row to win.</p>
+      <div class="card-stat" id="stat-ttt"></div>
+      <div class="play-btn">PLAY</div>
+    </a>
+
+    <a class="card breakout" href="breakout.html">
+      <div class="icon">🧱</div>
+      <h2>BREAKOUT</h2>
+      <p>Bounce the ball, smash all the bricks, and beat each level.</p>
+      <div class="card-stat" id="stat-breakout"></div>
+      <div class="play-btn">PLAY</div>
+    </a>
+
+    <a class="card sudoku" href="sudoku.html">
+      <div class="icon">🔢</div>
+      <h2>SUDOKU</h2>
+      <p>Fill the grid with numbers. Choose your size and difficulty.</p>
+      <div class="card-stat" id="stat-sudoku"></div>
+      <div class="play-btn">PLAY</div>
+    </a>
+
+  </div>
+
+  <!-- Stats table -->
+  <section id="stats-section" style="display:none">
+    <h2>YOUR STATS</h2>
+    <table id="stats-table">
+      <thead>
+        <tr>
+          <th>Game</th>
+          <th>Best / Wins</th>
+          <th>Played</th>
+          <th>Extra</th>
+        </tr>
+      </thead>
+      <tbody id="stats-body"></tbody>
+    </table>
+  </section>
+
+  <footer>MORE GAMES COMING SOON</footer>
+
+  <script>
+    const STORAGE_KEY = 'arcade_scores';
+    const USER_KEY    = 'arcade_username';
+
+    const input      = document.getElementById('username-input');
+    const saveBtn    = document.getElementById('save-user-btn');
+    const welcomeMsg = document.getElementById('welcome-msg');
+
+    function getScores() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    }
+
+    function getUser() {
+      return localStorage.getItem(USER_KEY) || '';
+    }
+
+    function fmtTime(sec) {
+      if (!sec && sec !== 0) return '—';
+      return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
+    }
+
+    function renderStats() {
+      const user = getUser();
+      if (!user) {
+        document.getElementById('stats-section').style.display = 'none';
+        ['snake','ttt','breakout','sudoku'].forEach(g => {
+          const el = document.getElementById(`stat-${g}`);
+          el.textContent = '';
+          el.classList.remove('has-data');
+        });
+        return;
+      }
+
+      const all   = getScores();
+      const data  = (all[user] || {});
+
+      // Card mini-stats
+      const cardStats = {
+        snake:   data.snake   ? `Best: ${data.snake.best}  ·  Played: ${data.snake.gamesPlayed}` : '',
+        ttt:     data.ttt     ? `Wins: ${data.ttt.wins}  ·  Draws: ${data.ttt.draws}` : '',
+        breakout:data.breakout? `Best: ${data.breakout.best}  ·  Played: ${data.breakout.gamesPlayed}` : '',
+        sudoku:  data.sudoku  ? `Solved: ${data.sudoku.completed}  ·  Best: ${fmtTime(data.sudoku.bestTime)}` : '',
+      };
+
+      Object.entries(cardStats).forEach(([game, txt]) => {
+        const el = document.getElementById(`stat-${game}`);
+        el.textContent = txt;
+        el.classList.toggle('has-data', txt !== '');
+      });
+
+      // Stats table
+      const tbody = document.getElementById('stats-body');
+      tbody.innerHTML = '';
+
+      const rows = [
+        {
+          game: '🐍 Snake',
+          best: data.snake ? data.snake.best : '—',
+          played: data.snake ? data.snake.gamesPlayed : '—',
+          extra: data.snake ? `Level ${data.snake.bestLevel || 1}` : '—',
+        },
+        {
+          game: '⭕ Tic Tac Toe',
+          best: data.ttt ? `${data.ttt.wins} wins` : '—',
+          played: data.ttt ? data.ttt.gamesPlayed : '—',
+          extra: data.ttt ? `${data.ttt.draws} draws / ${data.ttt.losses} losses` : '—',
+        },
+        {
+          game: '🧱 Breakout',
+          best: data.breakout ? data.breakout.best : '—',
+          played: data.breakout ? data.breakout.gamesPlayed : '—',
+          extra: data.breakout ? `Max level ${data.breakout.bestLevel || 1}` : '—',
+        },
+        {
+          game: '🔢 Sudoku',
+          best: data.sudoku ? `${data.sudoku.completed} solved` : '—',
+          played: data.sudoku ? data.sudoku.gamesPlayed : '—',
+          extra: data.sudoku && data.sudoku.bestTime ? `Best time ${fmtTime(data.sudoku.bestTime)}` : '—',
+        },
+      ];
+
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.game}</td><td class="highlight">${r.best}</td><td>${r.played}</td><td>${r.extra}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('stats-section').style.display = 'block';
+    }
+
+    function applyUser(name) {
+      if (!name) return;
+      localStorage.setItem(USER_KEY, name);
+      input.value = name;
+      welcomeMsg.textContent = `Hi, ${name}!`;
+      renderStats();
+    }
+
+    saveBtn.addEventListener('click', () => {
+      const name = input.value.trim();
+      if (name) applyUser(name);
+    });
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveBtn.click();
+    });
+
+    // Init
+    const saved = getUser();
+    if (saved) applyUser(saved);
+    else renderStats();
+  </script>
+
+</body>
+</html>
