@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wordle</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background: #1a1a2e;
+      font-family: 'Segoe UI', sans-serif;
+      color: #eee;
+      padding: 1rem 1rem 2rem;
+      gap: 1rem;
+    }
+
+    h1 {
+      font-size: clamp(1.6rem, 7vw, 2.5rem);
+      letter-spacing: 4px;
+      color: #74b9ff;
+      margin-top: 0.5rem;
+    }
+
+    /* ── HUD ── */
+    #hud {
+      display: flex;
+      gap: 2rem;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      color: #555;
+    }
+
+    #hud span { color: #74b9ff; font-weight: bold; }
+
+    /* ── Message ── */
+    #message {
+      font-size: clamp(0.9rem, 3vw, 1.1rem);
+      letter-spacing: 1px;
+      min-height: 1.4rem;
+      color: #a8dadc;
+      text-align: center;
+    }
+
+    /* ── Grid ── */
+    #grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .tile {
+      width: clamp(46px, 13vw, 62px);
+      height: clamp(46px, 13vw, 62px);
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(1.2rem, 4vw, 1.8rem);
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      transition: border-color 0.1s, transform 0.08s;
+      user-select: none;
+    }
+
+    .tile.filled {
+      border-color: #555;
+      transform: scale(1.06);
+    }
+
+    .tile.correct  { background: #2d6a4f; border-color: #2d6a4f; color: #eee; }
+    .tile.present  { background: #7d5a00; border-color: #7d5a00; color: #eee; }
+    .tile.absent   { background: #2a2a2a; border-color: #2a2a2a; color: #666; }
+
+    /* flip animation */
+    .tile.flip {
+      animation: flip 0.4s ease forwards;
+    }
+
+    @keyframes flip {
+      0%   { transform: scaleY(1); }
+      50%  { transform: scaleY(0); }
+      100% { transform: scaleY(1); }
+    }
+
+    /* shake on invalid word */
+    .row.shake {
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%     { transform: translateX(-6px); }
+      40%     { transform: translateX(6px); }
+      60%     { transform: translateX(-4px); }
+      80%     { transform: translateX(4px); }
+    }
+
+    /* ── On-screen keyboard ── */
+    #keyboard {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .kb-row {
+      display: flex;
+      gap: 5px;
+    }
+
+    .key {
+      height: clamp(40px, 11vw, 52px);
+      min-width: clamp(28px, 8vw, 40px);
+      padding: 0 0.4rem;
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 6px;
+      color: #eee;
+      font-size: clamp(0.7rem, 2.5vw, 0.9rem);
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .key.wide { min-width: clamp(46px, 13vw, 60px); font-size: clamp(0.6rem, 2vw, 0.75rem); }
+
+    .key:active { transform: scale(0.94); }
+
+    .key.correct  { background: #2d6a4f; border-color: #2d6a4f; }
+    .key.present  { background: #7d5a00; border-color: #7d5a00; }
+    .key.absent   { background: #2a2a2a; border-color: #2a2a2a; color: #555; }
+
+    /* ── Overlay (win/lose) ── */
+    #overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    #overlay.show { display: flex; }
+
+    #overlay-box {
+      background: #16213e;
+      border: 2px solid #74b9ff;
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 320px;
+      width: 90%;
+    }
+
+    #overlay-title {
+      font-size: 1.6rem;
+      letter-spacing: 3px;
+      color: #74b9ff;
+    }
+
+    #overlay-word {
+      font-size: 1rem;
+      color: #aaa;
+      letter-spacing: 2px;
+    }
+
+    #overlay-word strong { color: #eee; font-size: 1.3rem; }
+
+    #overlay-stats {
+      font-size: 0.85rem;
+      color: #666;
+      letter-spacing: 1px;
+      line-height: 1.8;
+    }
+
+    #overlay-stats span { color: #74b9ff; }
+
+    #play-again-btn {
+      padding: 0.6rem 2rem;
+      background: #74b9ff;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #play-again-btn:hover { background: #5aa3f0; }
+
+    /* ── Home button ── */
+    #home-btn {
+      display: inline-block;
+      padding: 0.5rem 1.5rem;
+      border: 2px solid #0f3460;
+      border-radius: 6px;
+      background: transparent;
+      color: #666;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    #home-btn:hover { border-color: #74b9ff; color: #74b9ff; }
+  </style>
+</head>
+<body>
+
+  <h1>WORDLE</h1>
+
+  <div id="hud">
+    <div>WINS <span id="hud-wins">0</span></div>
+    <div>STREAK <span id="hud-streak">0</span></div>
+    <div>PLAYED <span id="hud-played">0</span></div>
+  </div>
+
+  <div id="message"></div>
+
+  <div id="grid"></div>
+
+  <div id="keyboard">
+    <div class="kb-row" id="kb-row-0"></div>
+    <div class="kb-row" id="kb-row-1"></div>
+    <div class="kb-row" id="kb-row-2"></div>
+  </div>
+
+  <a id="home-btn" href="index.html">&#8592; Back to Home</a>
+
+  <!-- Win / Lose overlay -->
+  <div id="overlay">
+    <div id="overlay-box">
+      <div id="overlay-title"></div>
+      <div id="overlay-word"></div>
+      <div id="overlay-stats"></div>
+      <button id="play-again-btn">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <script>
+    // ── Word list (200 common 5-letter words, kid-friendly) ──
+    const WORDS = [
+      'apple','beach','brain','brick','brush','candy','chain','chair','chase','chess',
+      'chest','child','china','civic','claim','class','clean','clear','click','clock',
+      'close','cloud','clown','coach','coast','color','comic','coral','count','court',
+      'cover','craft','crane','crash','cream','creek','crime','crisp','cross','crowd',
+      'crown','crumb','crush','curve','dance','depth','digit','disco','dodge','dough',
+      'draft','drain','drama','drank','dream','dress','drift','drink','drive','drone',
+      'drove','drums','dryer','dwell','eagle','earth','eight','email','empty','enemy',
+      'enjoy','enter','entry','equal','event','every','exact','extra','fable','fairy',
+      'faith','fancy','feast','fence','fever','field','fight','final','first','flame',
+      'flash','float','flood','floor','flour','flute','flyer','focus','force','forge',
+      'found','frame','frank','fresh','front','frost','fruit','funny','giant','given',
+      'gizmo','globe','gloom','glove','going','grace','grade','grain','grand','grant',
+      'grape','grasp','grass','grave','great','greed','green','greet','grief','grill',
+      'grind','groan','groin','gross','group','grove','grown','guard','guess','guide',
+      'guile','guilt','gusto','habit','happy','heart','heavy','hello','honey','honor',
+      'horse','hotel','house','humor','hurry','icing','image','index','inner','input',
+      'irony','ivory','jazzy','jewel','joint','joker','jolly','joust','judge','juice',
+      'juicy','jumbo','jumpy','kayak','kiddo','knack','kneel','knife','knock','known',
+      'label','lance','large','laser','laugh','layer','learn','lemon','level','light',
+      'lilac','limit','linen','liver','lodge','logic','loose','lover','lucky','lunar',
+      'lunch','lunge','lyric','magic','maker','maple','march','match','mayor','media',
+      'merit','metal','might','mimic','minor','minus','mirth','misty','model','money',
+      'month','moral','motor','mount','mouse','mouth','movie','music','naval','nerve',
+      'never','night','ninja','noble','noise','north','noted','novel','nurse','nymph',
+      'ocean','offer','often','olive','onion','other','outer','oven','owner','oxide',
+      'ozone','paint','panel','panic','paper','party','pasta','patch','pause','peace',
+      'pearl','pedal','penny','perch','piano','piece','pilot','pinch','pixel','pizza',
+      'place','plain','plane','plank','plant','plate','plaza','pluck','plumb','plume',
+      'plump','plunge','plunk','point','polar','polka','poppy','porch','power','press',
+      'price','pride','prime','print','prism','prize','probe','prose','proud','prowl',
+      'pulse','punch','pupil','puppy','queen','quest','queue','quick','quiet','quota',
+      'quote','radar','radio','raise','rally','ranch','range','rapid','ratio','reach',
+      'ready','realm','rebel','recap','relax','renew','repay','rider','ridge','right',
+      'risky','rival','river','robot','rocky','rouge','rough','round','route','royal',
+      'rugby','ruler','rumor','rural','rusty','sadly','saint','salad','sauce','scale',
+      'scare','scene','scope','score','scout','screw','serve','seven','shade','shake',
+      'shall','shame','shape','share','sharp','shelf','shell','shift','shine','shirt',
+      'shock','shore','short','shout','shove','shown','sight','silly','since','sixth',
+      'sized','skate','skill','skimp','skirt','skull','slate','sleep','slice','slide',
+      'slope','sloth','smart','smash','smell','smile','smith','smoke','snail','snake',
+      'sneak','snore','solar','solid','solve','sorry','south','space','spark','speak',
+      'speed','spend','spice','spill','spine','spite','spoon','spore','sport','spout',
+      'spray','squad','stack','staff','stage','stain','stair','stamp','stand','start',
+      'stash','state','stave','steal','steam','steel','steep','steer','stern','stick',
+      'stiff','still','stock','stomp','stone','stood','store','storm','story','stove',
+      'strap','straw','stray','strip','strut','stuck','study','stump','stung','style',
+      'sugar','suite','sunny','super','surge','swamp','swear','sweep','sweet','swirl',
+      'sword','sworn','syrup','table','talon','tango','tasty','teach','tease','teens',
+      'tempo','tense','tenth','terra','thank','theme','their','there','think','third',
+      'thorn','those','three','threw','throw','thump','tiger','tight','timer','tired',
+      'titan','title','toast','today','token','totem','touch','tough','towel','tower',
+      'toxic','track','trade','trail','train','trait','tramp','trawl','treat','trend',
+      'trial','tribe','trick','troop','trove','truck','truly','trunk','trust','truth',
+      'tumor','tuner','tutor','twirl','twist','tying','ultra','uncle','under','unify',
+      'union','unity','until','upper','urban','usher','usual','utter','valid','valor',
+      'value','valve','vapor','vault','video','vigor','vinyl','viola','viral','virus',
+      'visor','visit','vista','vital','vivid','vocal','voice','voter','vowed','voter',
+      'wagon','waltz','waste','watch','water','weave','wedge','weigh','weird','whale',
+      'wheat','wheel','where','which','while','whirl','white','whole','width','witch',
+      'woman','women','world','worry','worse','worst','worth','would','wrath','wrist',
+      'wrong','yacht','yearn','yield','young','youth','zebra','zesty','zilch','zippy',
+    ].filter((w, i, a) => w.length === 5 && a.indexOf(w) === i); // dedupe & enforce 5 letters
+
+    const ROWS = 6;
+    const COLS = 5;
+    const KB_LAYOUT = [
+      ['Q','W','E','R','T','Y','U','I','O','P'],
+      ['A','S','D','F','G','H','J','K','L'],
+      ['ENTER','Z','X','C','V','B','N','M','⌫'],
+    ];
+
+    // ── State ──
+    let answer, currentRow, currentCol, board, keyStates, gameOver;
+
+    // ── DOM refs ──
+    const gridEl    = document.getElementById('grid');
+    const msgEl     = document.getElementById('message');
+    const overlayEl = document.getElementById('overlay');
+    const tiles     = [];  // tiles[row][col]
+    const keyEls    = {};  // keyEls['A'] = button el
+
+    // ── Build grid ──
+    function buildGrid() {
+      gridEl.innerHTML = '';
+      tiles.length = 0;
+      for (let r = 0; r < ROWS; r++) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.id = `row-${r}`;
+        const rowTiles = [];
+        for (let c = 0; c < COLS; c++) {
+          const tile = document.createElement('div');
+          tile.className = 'tile';
+          row.appendChild(tile);
+          rowTiles.push(tile);
+        }
+        gridEl.appendChild(row);
+        tiles.push(rowTiles);
+      }
+    }
+
+    // ── Build keyboard ──
+    function buildKeyboard() {
+      KB_LAYOUT.forEach((rowKeys, ri) => {
+        const rowEl = document.getElementById(`kb-row-${ri}`);
+        rowEl.innerHTML = '';
+        rowKeys.forEach(k => {
+          const btn = document.createElement('button');
+          btn.className = 'key' + (k === 'ENTER' || k === '⌫' ? ' wide' : '');
+          btn.textContent = k;
+          btn.dataset.key = k;
+          btn.addEventListener('click', () => handleKey(k));
+          rowEl.appendChild(btn);
+          keyEls[k] = btn;
+        });
+      });
+    }
+
+    // ── New game ──
+    function newGame() {
+      answer = WORDS[Math.floor(Math.random() * WORDS.length)].toUpperCase();
+      currentRow = 0;
+      currentCol = 0;
+      gameOver   = false;
+      board      = Array.from({ length: ROWS }, () => Array(COLS).fill(''));
+      keyStates  = {};
+
+      buildGrid();
+      buildKeyboard();
+      msgEl.textContent = '';
+      overlayEl.classList.remove('show');
+      updateHUD();
+    }
+
+    // ── Input handling ──
+    function handleKey(key) {
+      if (gameOver) return;
+
+      if (key === '⌫' || key === 'Backspace') {
+        deleteLetter();
+      } else if (key === 'ENTER' || key === 'Enter') {
+        submitGuess();
+      } else if (/^[A-Za-z]$/.test(key)) {
+        addLetter(key.toUpperCase());
+      }
+    }
+
+    function addLetter(letter) {
+      if (currentCol >= COLS) return;
+      board[currentRow][currentCol] = letter;
+      const tile = tiles[currentRow][currentCol];
+      tile.textContent = letter;
+      tile.classList.add('filled');
+      currentCol++;
+    }
+
+    function deleteLetter() {
+      if (currentCol <= 0) return;
+      currentCol--;
+      board[currentRow][currentCol] = '';
+      const tile = tiles[currentRow][currentCol];
+      tile.textContent = '';
+      tile.classList.remove('filled');
+    }
+
+    function submitGuess() {
+      if (currentCol < COLS) {
+        showMessage('Not enough letters');
+        shakeRow(currentRow);
+        return;
+      }
+
+      const guess = board[currentRow].join('');
+      const result = evaluate(guess, answer);
+      const submittedRow = currentRow;
+
+      updateKeyStates(guess, result);
+      currentRow++;
+      currentCol = 0;
+
+      revealRow(submittedRow, result, () => {
+        const won = result.every(r => r === 'correct');
+        if (won) {
+          gameOver = true;
+          saveScore(true);
+          setTimeout(() => showOverlay(true, guess), 300);
+        } else if (submittedRow === ROWS - 1) {
+          gameOver = true;
+          saveScore(false);
+          setTimeout(() => showOverlay(false, answer), 300);
+        }
+      });
+    }
+
+    // ── Evaluate guess ──
+    // Returns array of 'correct' | 'present' | 'absent' for each position
+    function evaluate(guess, answer) {
+      const result = Array(COLS).fill('absent');
+      const answerArr = answer.split('');
+      const guessArr  = guess.split('');
+      const used = Array(COLS).fill(false);
+
+      // First pass: correct positions
+      for (let i = 0; i < COLS; i++) {
+        if (guessArr[i] === answerArr[i]) {
+          result[i] = 'correct';
+          used[i] = true;
+          answerArr[i] = null; // consumed
+        }
+      }
+
+      // Second pass: present (wrong position)
+      for (let i = 0; i < COLS; i++) {
+        if (result[i] === 'correct') continue;
+        const idx = answerArr.indexOf(guessArr[i]);
+        if (idx !== -1) {
+          result[i] = 'present';
+          answerArr[idx] = null;
+        }
+      }
+
+      return result;
+    }
+
+    // ── Reveal row with flip animation ──
+    function revealRow(row, result, onDone) {
+      const rowTiles = tiles[row];
+      rowTiles.forEach((tile, i) => {
+        setTimeout(() => {
+          tile.classList.add('flip');
+          setTimeout(() => {
+            tile.classList.remove('filled');
+            tile.classList.add(result[i]);
+          }, 200); // apply color at mid-flip
+          if (i === COLS - 1) {
+            setTimeout(onDone, 400);
+          }
+        }, i * 100);
+      });
+    }
+
+    // ── Update keyboard colors ──
+    function updateKeyStates(guess, result) {
+      const priority = { correct: 3, present: 2, absent: 1 };
+      guess.split('').forEach((letter, i) => {
+        const cur = keyStates[letter];
+        const next = result[i];
+        if (!cur || priority[next] > priority[cur]) {
+          keyStates[letter] = next;
+          const btn = keyEls[letter];
+          if (btn) {
+            btn.classList.remove('correct', 'present', 'absent');
+            btn.classList.add(next);
+          }
+        }
+      });
+    }
+
+    // ── Shake row ──
+    function shakeRow(row) {
+      const rowEl = document.getElementById(`row-${row}`);
+      rowEl.classList.add('shake');
+      rowEl.addEventListener('animationend', () => rowEl.classList.remove('shake'), { once: true });
+    }
+
+    // ── Message ──
+    let msgTimer;
+    function showMessage(text, permanent) {
+      clearTimeout(msgTimer);
+      msgEl.textContent = text;
+      if (!permanent) {
+        msgTimer = setTimeout(() => { msgEl.textContent = ''; }, 1800);
+      }
+    }
+
+    // ── Overlay ──
+    function showOverlay(won, word) {
+      const all   = getStoredScores();
+      const user  = localStorage.getItem('arcade_username') || '';
+      const s     = (user && all[user] && all[user].wordle) || { wins: 0, gamesPlayed: 0, currentStreak: 0, bestStreak: 0 };
+
+      document.getElementById('overlay-title').textContent = won ? 'YOU GOT IT!' : 'GAME OVER';
+      document.getElementById('overlay-title').style.color = won ? '#74b9ff' : '#e94560';
+      document.getElementById('overlay-word').innerHTML = won
+        ? `Solved in <strong>${currentRow} / ${ROWS}</strong> guess${currentRow === 1 ? '' : 'es'}`
+        : `The word was <strong>${word}</strong>`;
+
+      document.getElementById('overlay-stats').innerHTML =
+        `Wins: <span>${s.wins}</span> &nbsp;·&nbsp; ` +
+        `Played: <span>${s.gamesPlayed}</span> &nbsp;·&nbsp; ` +
+        `Streak: <span>${s.currentStreak}</span> &nbsp;·&nbsp; ` +
+        `Best: <span>${s.bestStreak}</span>`;
+
+      overlayEl.classList.add('show');
+    }
+
+    // ── LocalStorage score ──
+    function getStoredScores() {
+      return JSON.parse(localStorage.getItem('arcade_scores') || '{}');
+    }
+
+    function saveScore(won) {
+      const user = localStorage.getItem('arcade_username');
+      if (!user) return;
+      const all = getStoredScores();
+      if (!all[user]) all[user] = {};
+      const s = all[user].wordle || { wins: 0, gamesPlayed: 0, currentStreak: 0, bestStreak: 0 };
+      s.gamesPlayed++;
+      if (won) {
+        s.wins++;
+        s.currentStreak++;
+        if (s.currentStreak > s.bestStreak) s.bestStreak = s.currentStreak;
+      } else {
+        s.currentStreak = 0;
+      }
+      all[user].wordle = s;
+      localStorage.setItem('arcade_scores', JSON.stringify(all));
+    }
+
+    function updateHUD() {
+      const user = localStorage.getItem('arcade_username') || '';
+      const all  = getStoredScores();
+      const s    = (user && all[user] && all[user].wordle) || { wins: 0, gamesPlayed: 0, currentStreak: 0 };
+      document.getElementById('hud-wins').textContent   = s.wins;
+      document.getElementById('hud-streak').textContent = s.currentStreak;
+      document.getElementById('hud-played').textContent = s.gamesPlayed;
+    }
+
+    // ── Physical keyboard ──
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      handleKey(e.key);
+    });
+
+    // ── Play again ──
+    document.getElementById('play-again-btn').addEventListener('click', newGame);
+
+    // ── Init ──
+    newGame();
+  </script>
+
+</body>
+</html>

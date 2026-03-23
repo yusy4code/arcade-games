@@ -149,6 +149,7 @@
     .card.ttt       { --accent: #e94560; }
     .card.breakout  { --accent: #f7b731; }
     .card.sudoku    { --accent: #a29bfe; }
+    .card.wordle    { --accent: #74b9ff; }
 
     /* ── Stats table ── */
     #stats-section {
@@ -221,7 +222,7 @@
 
     <a class="card ttt" href="tic-tac-toe.html">
       <div class="icon">⭕</div>
-      <h2>TIC TAC TOE</h2>
+      <h2>Tic Tac Toe</h2>
       <p>Two players take turns. Get three in a row to win.</p>
       <div class="card-stat" id="stat-ttt"></div>
       <div class="play-btn">PLAY</div>
@@ -240,6 +241,14 @@
       <h2>SUDOKU</h2>
       <p>Fill the grid with numbers. Choose your size and difficulty.</p>
       <div class="card-stat" id="stat-sudoku"></div>
+      <div class="play-btn">PLAY</div>
+    </a>
+
+    <a class="card wordle" href="wordle.html">
+      <div class="icon">🔠</div>
+      <h2>WORDLE</h2>
+      <p>Guess the 5-letter word in 6 tries. Green, yellow, or grey.</p>
+      <div class="card-stat" id="stat-wordle"></div>
       <div class="play-btn">PLAY</div>
     </a>
 
@@ -288,7 +297,7 @@
       const user = getUser();
       if (!user) {
         document.getElementById('stats-section').style.display = 'none';
-        ['snake','ttt','breakout','sudoku'].forEach(g => {
+        ['snake','ttt','breakout','sudoku','wordle'].forEach(g => {
           const el = document.getElementById(`stat-${g}`);
           el.textContent = '';
           el.classList.remove('has-data');
@@ -305,6 +314,7 @@
         ttt:     data.ttt     ? `Wins: ${data.ttt.wins}  ·  Draws: ${data.ttt.draws}` : '',
         breakout:data.breakout? `Best: ${data.breakout.best}  ·  Played: ${data.breakout.gamesPlayed}` : '',
         sudoku:  data.sudoku  ? `Solved: ${data.sudoku.completed}  ·  Best: ${fmtTime(data.sudoku.bestTime)}` : '',
+        wordle:  data.wordle  ? `Wins: ${data.wordle.wins}  ·  Streak: ${data.wordle.currentStreak}` : '',
       };
 
       Object.entries(cardStats).forEach(([game, txt]) => {
@@ -341,6 +351,12 @@
           best: data.sudoku ? `${data.sudoku.completed} solved` : '—',
           played: data.sudoku ? data.sudoku.gamesPlayed : '—',
           extra: data.sudoku && data.sudoku.bestTime ? `Best time ${fmtTime(data.sudoku.bestTime)}` : '—',
+        },
+        {
+          game: '🔤 Wordle',
+          best: data.wordle ? `${data.wordle.wins} wins` : '—',
+          played: data.wordle ? data.wordle.gamesPlayed : '—',
+          extra: data.wordle ? `Streak ${data.wordle.currentStreak} / Best ${data.wordle.bestStreak}` : '—',
         },
       ];
 
